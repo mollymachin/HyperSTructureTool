@@ -22,7 +22,8 @@ from neo4j.exceptions import ServiceUnavailable, AuthError
 logger = logging.getLogger(__name__)
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-load_dotenv(env_path, override=True)
+# In production (e.g., Render), service env vars should win over repo .env
+load_dotenv(env_path, override=False)
 
 @dataclass
 class Neo4jConfig:

@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any, List
 from pydantic import BaseModel
 import json
+import os
 from kh_core.openai_llm_interface import OpenAILLMInterface
 from backend.tools import TOOLS, execute_tool
 from utils.text_to_cypher import TextToHyperSTructurePipeline
@@ -17,10 +18,12 @@ from kh_core.neo4j_storage import Neo4jConfig
 
 app = FastAPI(title="Neo4j Hyperstructure Visualisation API", version="1.0.0")
 
-# Enable CORS for React frontend
+# Enable CORS for frontend (configurable via env FRONTEND_ORIGIN, comma-separated for multiple)
+frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
+allowed_origins = [o.strip() for o in frontend_origin_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -96,12 +99,7 @@ async def root():
 async def _ensure_pipeline_and_openai():
     global text_to_cypher_pipeline, openai_client
     if text_to_cypher_pipeline is None:
-        neo4j_config = Neo4jConfig(
-            uri="bolt://localhost:7687",
-            username="neo4j",
-            password="password",
-            database="neo4j"
-        )
+        neo4j_config = Neo4jConfig()
         text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
         ok = await text_to_cypher_pipeline.initialise_neo4j_connection()
         if not ok:
@@ -234,12 +232,7 @@ async def get_hyperstructure_data(
         # Initialise Neo4j connection if not already done
         if text_to_cypher_pipeline is None:
             try:
-                neo4j_config = Neo4jConfig(
-                    uri="bolt://localhost:7687",
-                    username="neo4j",
-                    password="password",
-                    database="neo4j"
-                )
+                neo4j_config = Neo4jConfig()
                 text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
                 
                 if not await text_to_cypher_pipeline.initialise_neo4j_connection():
@@ -536,12 +529,7 @@ async def add_hyperedge(request: AddHyperedgeRequest):
         # Initialise Neo4j connection if not already done
         if text_to_cypher_pipeline is None:
             try:
-                neo4j_config = Neo4jConfig(
-                    uri="bolt://localhost:7687",
-                    username="neo4j",
-                    password="password",
-                    database="neo4j"
-                )
+                neo4j_config = Neo4jConfig()
                 text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
                 
                 if not await text_to_cypher_pipeline.initialise_neo4j_connection():
@@ -637,12 +625,7 @@ async def get_extracted_structured_data():
         # Ensure connection
         global text_to_cypher_pipeline
         if text_to_cypher_pipeline is None:
-            neo4j_config = Neo4jConfig(
-                uri="bolt://localhost:7687",
-                username="neo4j",
-                password="password",
-                database="neo4j"
-            )
+            neo4j_config = Neo4jConfig()
             text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
             ok = await text_to_cypher_pipeline.initialise_neo4j_connection()
             if not ok:
@@ -736,12 +719,7 @@ async def process_text(request: ProcessTextRequest):
         global text_to_cypher_pipeline
         if text_to_cypher_pipeline is None:
             try:
-                neo4j_config = Neo4jConfig(
-                    uri="bolt://localhost:7687",
-                    username="neo4j",
-                    password="password",
-                    database="neo4j"
-                )
+                neo4j_config = Neo4jConfig()
                 text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
                 
                 if not await text_to_cypher_pipeline.initialise_neo4j_connection():
@@ -802,12 +780,7 @@ async def process_text_stream(text: str, chunk_size: int = 3):
         global text_to_cypher_pipeline
         if text_to_cypher_pipeline is None:
             try:
-                neo4j_config = Neo4jConfig(
-                    uri="bolt://localhost:7687",
-                    username="neo4j",
-                    password="password",
-                    database="neo4j"
-                )
+                neo4j_config = Neo4jConfig()
                 text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
                 ok = await text_to_cypher_pipeline.initialise_neo4j_connection()
                 if not ok:
@@ -910,12 +883,7 @@ async def clear_hyperstructure():
         # Initialise Neo4j connection if not already done
         if text_to_cypher_pipeline is None:
             try:
-                neo4j_config = Neo4jConfig(
-                    uri="bolt://localhost:7687",
-                    username="neo4j",
-                    password="password",
-                    database="neo4j"
-                )
+                neo4j_config = Neo4jConfig()
                 text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
                 
                 if not await text_to_cypher_pipeline.initialise_neo4j_connection():
