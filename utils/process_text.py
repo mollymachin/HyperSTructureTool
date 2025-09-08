@@ -118,28 +118,32 @@ def expand_spatial(text: str) -> List[Dict[str, Any]]:
     """
     # Geocoding of spatial names to coordinates (either point or polygon)
     import requests
+    import os
 
-    MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoibW9sbHltb2xzIiwiYSI6ImNtZTJ6ZGh6ZjAxdjMycXF6MHZwb2tudDAifQ.a34RHi95buIDamPtR282sA'
+    # Use env for non-restricted use once deployed
+    MAPBOX_ACCESS_TOKEN = os.getenv('MAPBOX_ACCESS_TOKEN') or os.getenv('MAPBOX_TOKEN')
     
     results = []
 
-    # 1. Try Mapbox Geocoding API which can encode Points (polygons are paid)
-    mapbox_url = (
-        f"https://api.mapbox.com/geocoding/v5/mapbox.places/{requests.utils.quote(text)}.json"
-        f"?access_token={MAPBOX_ACCESS_TOKEN}&limit=1"
-    )
-    resp = requests.get(mapbox_url)
-    if resp.ok:
-        data = resp.json()
-        if data["features"]:
-            feature = data["features"][0]
-            coords = feature["geometry"]["coordinates"]
-            results.append({
-                "name": text,
-                "type": "Point",
-                "coordinates": coords
-            })
-            return results
+    # 1. Try Mapbox Geocoding API for Points if token is available
+    if MAPBOX_ACCESS_TOKEN:
+        mapbox_url = (
+            f"https://api.mapbox.com/geocoding/v5/mapbox.places/{requests.utils.quote(text)}.json"
+            f"?access_token={MAPBOX_ACCESS_TOKEN}&limit=1"
+        )
+        resp = requests.get(mapbox_url)
+        if resp.ok:
+            data = resp.json()
+            if data.get("features"):
+                feature = data["features"][0]
+                coords = feature.get("geometry", {}).get("coordinates")
+                if coords:
+                    results.append({
+                        "name": text,
+                        "type": "Point",
+                        "coordinates": coords
+                    })
+                    return results
 
     # 2. Fallback: Nominatim for polygons (free)
     # Request full-detail polygons (we will simplify client-side deterministically below)
