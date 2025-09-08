@@ -1,0 +1,22 @@
+{
+  "name": "knowledge-hyperstructure",
+  "version": "1.0.0",
+  "description": "Knowledge Hyperstructure Visualization System",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd frontend && npm install",
+    "cleanup": "node scripts/cleanup.js",
+    "start:backend": "source venv/bin/activate && python3 backend/main.py",
+    "start:frontend": "cd frontend && npm start",
+    "start": "npm run cleanup && concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "dev": "npm run start",
+    "build": "cd frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+} 
