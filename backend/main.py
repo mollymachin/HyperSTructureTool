@@ -546,6 +546,7 @@ async def add_hyperedge(request: AddHyperedgeRequest):
         try:
             # Convert request to structured data format expected by the pipeline
             structured_data = {
+                "fact_type": "temporal_fact",
                 "subjects": request.subjects,
                 "objects": request.objects,
                 "relation_type": request.relation_type,
@@ -555,8 +556,12 @@ async def add_hyperedge(request: AddHyperedgeRequest):
             
             # Generate and execute Cypher query
             cypher_query = ""
-            async for query in text_to_cypher_pipeline.cypher_generator.generate_cypher_from_structured_output([structured_data]):
-                cypher_query = query
+            cypher_params = None
+            async for item in text_to_cypher_pipeline.cypher_generator.generate_cypher_from_structured_output([structured_data], neo4j_storage=text_to_cypher_pipeline.neo4j_storage):
+                if isinstance(item, tuple) and len(item) == 2:
+                    cypher_query, cypher_params = item
+                else:
+                    cypher_query = str(item)
                 break
             
             if not cypher_query:
@@ -565,8 +570,8 @@ async def add_hyperedge(request: AddHyperedgeRequest):
                     message="Failed to generate Cypher query"
                 )
             
-            # Execute the query
-            success = await text_to_cypher_pipeline.execute_cypher(cypher_query)
+            # Execute the query (with params if provided)
+            success = await text_to_cypher_pipeline.execute_cypher(cypher_query, cypher_params)
             if not success:
                 return AddHyperedgeResponse(
                     status="error",
