@@ -5,6 +5,7 @@ import './HyperstructureVisualisation.css';
 interface HyperstructureVisualisationProps {
   data: any;
   isProcessing: boolean;
+  showStateCausality: boolean;
 }
 
 interface Node {
@@ -124,7 +125,8 @@ const wrapTextByWords = (text: string, maxCharsPerLine: number): string[] => {
 
 const HyperstructureVisualisation: React.FC<HyperstructureVisualisationProps> = ({ 
   data, 
-  isProcessing 
+  isProcessing,
+  showStateCausality
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationRef = useRef<d3.Simulation<Node, Link> | null>(null);
@@ -132,7 +134,7 @@ const HyperstructureVisualisation: React.FC<HyperstructureVisualisationProps> = 
   const zoomBehaviourRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const lastTransformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
   const hasFittedOnceRef = useRef<boolean>(false);
-  const [showStateCausality, setShowStateCausality] = useState<boolean>(false);
+  // showStateCausality is now controlled by parent via props
   const [popup, setPopup] = useState<{ visible: boolean, nodeId: string | null, stateKey?: string | null, x: number, y: number, value: boolean }>({ visible: false, nodeId: null, stateKey: null, x: 0, y: 0, value: true });
   const [causalitySelection, setCausalitySelection] = useState<{ stateId?: string, stateKey?: string, value: boolean } | null>(null);
   const [stateLabelOverrides, setStateLabelOverrides] = useState<Record<string, string>>({});
@@ -1048,22 +1050,6 @@ const HyperstructureVisualisation: React.FC<HyperstructureVisualisationProps> = 
 
   return (
     <div className="visualisation-container">
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-        <button
-          onClick={() => setShowStateCausality((v) => !v)}
-          style={{
-            padding: '6px 10px',
-            background: showStateCausality ? '#6a5acd' : '#444',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer'
-          }}
-          aria-pressed={showStateCausality}
-        >
-          {showStateCausality ? 'Hide state & causality' : 'Show state & causality'}
-        </button>
-      </div>
       <div className="svg-container" style={{ position: 'relative' }}>
         <svg ref={svgRef}></svg>
         {showStateCausality && popup.visible && popup.nodeId && (

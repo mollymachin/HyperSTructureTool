@@ -7,18 +7,26 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
+/* When the filter is used in the side column, remove outer margins and stretch */
+.filter-column .temporal-input-container {
+  margin: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .temporal-input-container h3 {
   margin-top: 0;
   color: #111111;
   border-bottom: 2px solid rgba(0, 0, 0, 0.1);
   padding-bottom: 10px;
-  font-size: 20px;
+  font-size: 20px; /* smaller than subheader */
 }
 
 .temporal-input-container p {
   color: rgba(0, 0, 0, 0.7);
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: 1.25rem;
 }
 
 .temporal-inputs,
@@ -35,7 +43,7 @@
   margin-bottom: 5px;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.85);
-  font-size: 14px;
+  font-size: 1.25rem;
 }
 
 .temporal-input,
@@ -47,7 +55,7 @@
   border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 6px;
   color: #111111;
-  font-size: 14px;
+  font-size: 1.25rem;
   transition: all 0.3s ease;
 }
 
@@ -91,7 +99,7 @@
   margin-bottom: 0;
   font-weight: normal;
   color: rgba(0, 0, 0, 0.7);
-  font-size: 14px;
+  font-size: 1.25rem;
 }
 
 .filter-display {
@@ -105,7 +113,7 @@
 .filter-display p {
   margin: 5px 0;
   color: rgba(0, 0, 0, 0.8);
-  font-size: 14px;
+  font-size: 1.25rem;
 }
 
 .filter-display p:first-child {
@@ -121,7 +129,7 @@
 
 .button-row {
   display: flex;
-  gap: 15px;
+  gap: 10px; /* tighter spacing */
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
@@ -132,12 +140,12 @@
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 12px 20px;
-  font-size: 14px;
+  padding: 8px 14px; /* smaller */
+  font-size: 1.2rem; /* slightly larger text */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 140px;
+  min-width: 110px; /* narrower */
 }
 
 .clear-filters-button:hover:not(:disabled) {
@@ -159,12 +167,12 @@
   color: white;
   border: none;
   border-radius: 6px;
-  padding: 12px 24px;
-  font-size: 14px;
+  padding: 8px 16px; /* smaller */
+  font-size: 1.2rem; /* slightly larger text */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  min-width: 160px;
+  min-width: 130px; /* narrower */
 }
 
 .load-filtered-button:hover:not(:disabled) {

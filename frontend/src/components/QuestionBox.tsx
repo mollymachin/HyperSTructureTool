@@ -11,6 +11,22 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({ onSubmit }) => {
   const [result, setResult] = useState<string>('');
   const [answers, setAnswers] = useState<Array<{ question: string; valid: boolean; descriptor: string }>>([]);
 
+  const isYesNoQuestion = (q: string): boolean => {
+    const trimmed = (q || '').trim();
+    if (!trimmed) return false;
+    const firstWord = trimmed.split(/\s+/)[0].toLowerCase();
+    const auxiliaries = [
+      'is','are','am','was','were','do','does','did','can','could','should','would','will','has','have','had','may','might','shall','must'
+    ];
+    return auxiliaries.includes(firstWord);
+  };
+
+  const stripLeadingYesNo = (text: string): string => {
+    if (!text) return '';
+    // Remove a leading Yes/No/True/False with common punctuation
+    return text.replace(/^(\s*)(yes|no|true|false)[\s.:,\-\u2013\u2014]+/i, '$1').trimStart();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = question.trim();
@@ -45,7 +61,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({ onSubmit }) => {
 
   return (
     <div className="question-box">
-      <h3 className="question-title">Ask a Question</h3>
+      <h3 className="question-title subheader">Ask a Question</h3>
       <p className="question-subtitle">Describe what you want to know about the graph.</p>
       <form onSubmit={handleSubmit} className="question-form">
         <textarea
@@ -68,13 +84,17 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({ onSubmit }) => {
       )}
       {answers.length > 0 && (
         <div className="answers-box">
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Answers</div>
-          {answers.map((a, i) => (
-            <div key={i} className="answer-item">
-              <div style={{ opacity: 0.7 }}>Q: {a.question}</div>
-              <div>A: {(a.valid ? 'True' : 'False') + ' | ' + (a.descriptor || '')}</div>
-            </div>
-          ))}
+          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: '1.5rem' }}>Answers</div>
+          {answers.map((a, i) => {
+            const showYesNo = isYesNoQuestion(a.question);
+            const text = showYesNo ? (a.descriptor || '') : stripLeadingYesNo(a.descriptor || '');
+            return (
+              <div key={i} className="answer-item">
+                <div style={{ opacity: 0.7 }}>Q: {a.question}</div>
+                <div>A: {text}</div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

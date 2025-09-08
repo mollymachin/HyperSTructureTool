@@ -9,13 +9,12 @@
 .text-input-processor-container h2 {
   margin: 0 0 10px 0;
   color: #111111;
-  font-size: 22px;
 }
 
 .text-input-processor-container p {
   margin: 0 0 20px 0;
   color: rgba(0, 0, 0, 0.7);
-  font-size: 16px;
+  font-size: 1.25rem;
 }
 
 .text-input-section {
@@ -30,7 +29,7 @@
   border-radius: 6px;
   padding: 15px;
   color: #111111;
-  font-size: 16px;
+  font-size: 1.25rem;
   font-family: inherit;
   resize: vertical;
   transition: border-color 0.3s ease;
@@ -56,6 +55,12 @@
   gap: 20px;
 }
 
+.submit-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .real-time-toggle {
   margin-bottom: 20px;
   text-align: center;
@@ -67,7 +72,7 @@
   gap: 10px;
   cursor: pointer;
   color: rgba(0, 0, 0, 0.8);
-  font-size: 16px;
+  font-size: 1.25rem;
   justify-content: center;
 }
 
@@ -77,13 +82,12 @@
   border: none;
   border-radius: 6px;
   padding: 8px 16px;
-  font-size: 14px;
+  font-size: 1.25rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   min-width: 60px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  /* Use normal casing to match other buttons */
 }
 
 .real-time-button:hover {
@@ -104,7 +108,7 @@
   display: block;
   margin-top: 5px;
   color: rgba(0, 0, 0, 0.6);
-  font-size: 14px;
+  font-size: 1.25rem;
   font-style: italic;
   text-align: center;
 }
@@ -115,7 +119,7 @@
   border: none;
   border-radius: 6px;
   padding: 12px 24px;
-  font-size: 16px;
+  font-size: 1.25rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -135,6 +139,32 @@
   box-shadow: none;
 }
 
+.clear-text-button {
+  background: #dc3545; /* red variant matching style */
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px; /* same as submit */
+  font-size: 1.25rem; /* same as submit */
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px; /* same as submit */
+}
+
+.clear-text-button:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.clear-text-button:disabled {
+  background: #e0e0e0;
+  color: #8f8f8f;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .submit-button.processing {
   background: #2e7d32;
   box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.25);
@@ -147,7 +177,7 @@
   padding: 10px;
   margin: 10px 0;
   color: #ff6b6b;
-  font-size: 16px;
+  font-size: 1.25rem;
 }
 
 .progress-message {
@@ -157,7 +187,7 @@
   padding: 15px;
   margin: 15px 0;
   color: #4CAF50;
-  font-size: 16px;
+  font-size: 1.25rem;
 }
 
 .real-time-indicator {
@@ -167,7 +197,7 @@
   border: 1px solid rgba(102, 126, 234, 0.3);
   border-radius: 4px;
   color: #667eea;
-  font-size: 14px;
+  font-size: 1.25rem;
   font-weight: 500;
 }
 
@@ -184,8 +214,8 @@
 
 .progress-item {
   color: #222;
-  font-size: 15px;
-  line-height: 1.4;
+  font-size: 1.35rem;
+  line-height: 1.5;
 }
 
 .info-section {
@@ -199,7 +229,7 @@
 .info-section p {
   margin: 0 0 10px 0;
   color: rgba(0, 0, 0, 0.8);
-  font-size: 16px;
+  font-size: 1.25rem;
   font-weight: 500;
 }
 
@@ -207,7 +237,7 @@
   margin: 0;
   padding-left: 25px;
   color: rgba(0, 0, 0, 0.7);
-  font-size: 15px;
+  font-size: 1.25rem;
 }
 
 .info-section li {

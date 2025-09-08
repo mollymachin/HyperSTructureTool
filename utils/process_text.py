@@ -157,7 +157,7 @@ def expand_spatial(text: str) -> List[Dict[str, Any]]:
                 coords = place["geojson"].get("coordinates")
                 if geom_type in ["Polygon", "MultiPolygon"] and coords is not None:
                     # Strictly cap polygon complexity to keep payload small e.g. in case of a large polygon like the UK
-                    MAX_POINTS = 20
+                    MAX_POINTS = 40
 
                     def ensure_closed(ring):
                         if not ring:

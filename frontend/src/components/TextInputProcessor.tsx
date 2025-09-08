@@ -220,7 +220,7 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
 
   return (
     <div className="text-input-processor-container">
-      <h2>Process New Text</h2>
+      <h2 className="subheader">Process New Text</h2>
       <p>Enter text to process through the pipeline and add to the graph</p>
       
       {error && (
@@ -233,7 +233,7 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
         <textarea
           value={textInput}
           onChange={(e) => setTextInput(e.target.value)}
-          placeholder="Enter your text here... (will be split into chunks of ~3 sentences)"
+          placeholder="Enter your text here..."
           className="text-input-area"
           rows={6}
           disabled={isProcessing}
@@ -248,29 +248,35 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
               onClick={() => setRealTimeUpdates(!realTimeUpdates)}
               className={`real-time-button ${realTimeUpdates ? '' : 'off'}`}
             >
-              {realTimeUpdates ? 'ON' : 'OFF'}
+              {`Real-Time Updates: ${realTimeUpdates ? 'ON' : 'OFF'}`}
             </button>
-            Real-time updates
           </label>
-          <span className="toggle-description">
-            {realTimeUpdates ? 'ON' : 'OFF'} - Graph will automatically refresh every second while processing
-          </span>
         </div>
-        
-        <button 
-          onClick={processTextInput}
-          disabled={!canSubmit}
-          className={`submit-button ${!canSubmit ? 'disabled' : ''}`}
-        >
-          {isProcessing ? 'Processing...' : 'Process Text'}
-        </button>
+        <div className="submit-actions">
+          <button 
+            onClick={processTextInput}
+            disabled={!canSubmit}
+            className={`submit-button ${!canSubmit ? 'disabled' : ''}`}
+          >
+            {isProcessing ? 'Processing...' : 'Process Text'}
+          </button>
+
+          {textInput.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={() => setTextInput('')}
+              disabled={isProcessing}
+              className="clear-text-button"
+              title="Clear the text input"
+            >
+              Clear Text
+            </button>
+          )}
+        </div>
 
         {progressVisible && (currentProgress || progressQueue.length > 0) && (
           <div className="progress-popup">
             <div className="progress-item">{currentProgress}</div>
-            {realTimeUpdates && isProcessing && (
-              <div className="real-time-indicator">Real-time updates enabled: Refreshing the graph every second</div>
-            )}
           </div>
         )}
       </div>

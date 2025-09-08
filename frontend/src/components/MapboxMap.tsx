@@ -19,6 +19,7 @@ interface MapboxMapProps {
   spatialData?: SpatialData[];
   showInternalControls?: boolean;
   onContainmentModeChange?: (mode: 'overlap' | 'contained') => void;
+  onSelectionChange?: (hasSelection: boolean) => void;
 }
 
 // Normalise helpers outside the component to avoid hook deps
@@ -53,7 +54,7 @@ export type MapboxMapHandle = {
   getContainmentMode: () => 'overlap' | 'contained';
 };
 
-const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(({ className = '', spatialData = [], showInternalControls = true, onContainmentModeChange }, ref) => {
+const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(({ className = '', spatialData = [], showInternalControls = true, onContainmentModeChange, onSelectionChange }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
@@ -81,34 +82,16 @@ const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(({ className = '',
         const coords = item.coordinates as number[];
         const [lon, lat] = coords;
         
-        // Creates a custom marker element - like Google maps pins but cyber themed
+        // Simple, crisp purple pin without glow or gradients
         const markerEl = document.createElement('div');
         markerEl.innerHTML = `
-          <svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <radialGradient id="cyberGradient" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#a64eff"/>
-                <stop offset="100%" stop-color="#5c1ac3"/>
-              </radialGradient>
-              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
-                <feMerge>
-                  <feMergeNode in="blur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <path d="M15 0C8 0 2.5 5.5 2.5 12.5c0 9.5 12.5 27.5 12.5 27.5s12.5-18 12.5-27.5C27.5 5.5 22 0 15 0z"
-                  fill="url(#cyberGradient)"
-                  filter="url(#glow)"
-                  stroke="pale-lilac" stroke-width="2"/>
-            <circle cx="15" cy="12" r="5" fill="#fff"/>
+          <svg width="28" height="38" viewBox="-2 -2 32 42" xmlns="http://www.w3.org/2000/svg" style="overflow: visible">
+            <path d="M14 0C6.82 0 1 5.82 1 13c0 8.5 10.5 24 13 24s13-15.5 13-24C27 5.82 21.18 0 14 0z" fill="#7B61FF" stroke="#4B2BD6" stroke-width="2" shape-rendering="geometricPrecision"/>
+            <circle cx="14" cy="13" r="5" fill="#ffffff"/>
           </svg>
         `;
         markerEl.style.cursor = 'pointer';
         markerEl.title = item.name;
-        markerEl.style.width = '24px';
-        markerEl.style.height = '32px';
 
         // Create and add the marker
         const marker = new mapboxgl.Marker(markerEl)
@@ -420,12 +403,14 @@ const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(({ className = '',
     setIsDrawing(false);
     try { map.current.doubleClickZoom.enable(); } catch {}
     const poly = drawCoords.length >= 3 ? drawCoords : [];
-    updateDrawData([]);
+    ensureDrawLayers();
+    updateDrawData(poly); // persist the selection polygon overlay
     setLastDrawnPolygon(poly.length ? poly : null);
     if (poly.length) {
       filterAndRender(poly);
+      if (onSelectionChange) onSelectionChange(true);
     }
-  }, [drawCoords, updateDrawData, filterAndRender]);
+  }, [drawCoords, ensureDrawLayers, updateDrawData, filterAndRender, onSelectionChange]);
 
   // Re-apply filter when containment mode changes if we have a drawn polygon
   useEffect(() => {
@@ -449,7 +434,8 @@ const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(({ className = '',
     clearMarkers();
     addPointMarkers(base);
     addPolygonLayers(base);
-  }, [spatialData, addPointMarkers, addPolygonLayers, ensureDrawLayers, updateDrawData]);
+    if (onSelectionChange) onSelectionChange(false);
+  }, [spatialData, addPointMarkers, addPolygonLayers, ensureDrawLayers, updateDrawData, onSelectionChange]);
 
   // Expose imperative API to parent
   useImperativeHandle(ref, () => ({
@@ -498,7 +484,10 @@ const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(({ className = '',
 
   // Effect to handle spatial data changes
   useEffect(() => {
-    if (map.current && spatialData.length > 0 && !isDrawing) {
+    if (map.current && spatialData.length > 0) {
+      // Reset base dataset reference to the latest provided data
+      originalDataRef.current = spatialData.slice();
+
       clearMarkers();
       addPointMarkers(spatialData);
       addPolygonLayers(spatialData);
@@ -550,8 +539,12 @@ const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(({ className = '',
       } catch (e) {
         // Ignore bounds errors
       }
+      // If there is an active selection polygon, re-apply filtering to the new dataset
+      if (lastDrawnPolygon && lastDrawnPolygon.length >= 3) {
+        filterAndRender(lastDrawnPolygon);
+      }
     }
-  }, [spatialData, addPointMarkers, addPolygonLayers, isDrawing]);
+  }, [spatialData, addPointMarkers, addPolygonLayers, lastDrawnPolygon, filterAndRender]);
 
   useEffect(() => {
     if (map.current) return; // initialise map only once

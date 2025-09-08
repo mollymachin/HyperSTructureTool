@@ -64,10 +64,72 @@ body {
   margin-right: auto;
 }
 
+/* Unified subheader style for key section headings */
+.subheader {
+  font-size: 2rem; /* larger, consistent size */
+  font-weight: 700;
+  margin: 0; /* let containers add spacing */
+  color: #222222;
+}
+
+/* Make the Interactive Map header slightly larger than other subheaders */
+.map-section h2.subheader {
+  font-size: 2.4rem;
+}
+
 .App-main {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 1rem;
+}
+
+/* Two-column layout for visualisation (left) and spatiotemporal filter (right) */
+.vis-and-filter-row {
+  display: flex;
+  align-items: stretch; /* make tops and bottoms align */
+  gap: 16px;
+  margin-bottom: 24px; /* spacing above the map section */
+}
+
+.vis-column {
+  flex: 0 0 75%; /* 3/4 width */
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-column {
+  flex: 0 0 25%; /* 1/4 width */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure the inner containers in columns stretch */
+.vis-column .visualisation-section {
+  flex: 1 1 auto; /* let visualisation grow */
+  margin-bottom: 0;
+}
+
+.filter-column .temporal-section {
+  flex: 0 0 auto; /* let filter size to content */
+  margin-bottom: 0;
+  align-self: flex-start; /* avoid stretching */
+}
+
+/* Allow visualisation section to stretch content to fill height */
+.vis-column .visualisation-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+@media (max-width: 1024px) {
+  .vis-and-filter-row {
+    flex-direction: column;
+  }
+  .vis-column,
+  .filter-column {
+    flex: 1 1 auto;
+  }
 }
 
 .input-section,
@@ -92,13 +154,20 @@ body {
   transition: all 0.3s ease;
 }
 
+/* Smaller buttons inside key sections to reduce visual weight */
+.visualisation-section button,
+.map-section button {
+  padding: 8px 12px;
+  font-size: 1.05rem;
+}
+
 .clear-button {
   background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
   color: white;
   border: none;
   border-radius: 6px;
   padding: 8px 16px;
-  font-size: 12px;
+  font-size: 1.25rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -175,7 +244,7 @@ button {
   border-radius: 8px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 1.25rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -198,7 +267,7 @@ input, textarea {
   padding: 12px 16px;
   border-radius: 8px;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 1.25rem;
   transition: all 0.2s ease;
 }
 

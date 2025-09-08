@@ -144,8 +144,8 @@ const SpatiotemporalInput: React.FC<SpatiotemporalInputProps> = ({
 
   return (
     <div className="temporal-input-container">
-      <h3>Spatiotemporal Filtering</h3>
-      <p>Filter the visualisation by time and/or location</p>
+      <h3>Spatio-Temporal Filtering</h3>
+      <p>Filter the visualisation by time and/or location. Time filtering uses UTC.</p>
       
       <div className="temporal-inputs">
         <div className="input-group">
@@ -197,6 +197,10 @@ const SpatiotemporalInput: React.FC<SpatiotemporalInputProps> = ({
               value={locationNames}
               onChange={handleLocationNamesChange}
               className="spatial-input"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoCapitalize="none"
               placeholder="Boston, MIT, Cambridge"
             />
           </div>
@@ -211,6 +215,10 @@ const SpatiotemporalInput: React.FC<SpatiotemporalInputProps> = ({
               value={locationCoordinates}
               onChange={handleLocationCoordinatesChange}
               className="spatial-input"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              autoCapitalize="none"
               placeholder="[[-71.0589, 42.3601], [-71.0935, 42.3591], [-71.0935, 42.3591]]"
             />
             <div className="checkbox-group">
@@ -228,13 +236,7 @@ const SpatiotemporalInput: React.FC<SpatiotemporalInputProps> = ({
         )}
       </div>
       
-      <div className="filter-display">
-        <p><strong>Current filters:</strong></p>
-        <p>Time: {startTime || 'No start'} to {endTime || 'No end'}</p>
-        <p>Spatial: {spatialFilterType === 'none' ? 'None' : 
-                   spatialFilterType === 'names' ? `Names: ${locationNames || 'None'}` :
-                   `Coordinates: ${locationCoordinates ? 'Set' : 'None'}${includeSpatiallyUnconstrained ? ' (including unconstrained)' : ''}`}</p>
-      </div>
+      {/* Removed current filters box as requested */}
       
       <div className="load-filtered-section">
         <div className="button-row">

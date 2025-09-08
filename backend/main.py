@@ -787,7 +787,7 @@ async def process_text(request: ProcessTextRequest):
 async def process_text_stream(text: str, chunk_size: int = 3):
     """
     Server-Sent Events (SSE) endpoint that streams human-readable progress messages
-    while processing text. Messages are throttled on the client; server emits as produced.
+    while processing text. Messages are throttled per second
     """
     async def event_generator():
         # Helper to format SSE events
@@ -814,7 +814,7 @@ async def process_text_stream(text: str, chunk_size: int = 3):
                     yield sse_event({"type": "error", "message": "Failed to connect to Neo4j database"})
                     return
             except Exception as e:
-                # Will still proceed without DB; pipeline handles no-graph mode
+                # Will still proceed without DB - pipeline handles no-graph mode
                 pass
 
         # Import the pipeline and set up a queue for events

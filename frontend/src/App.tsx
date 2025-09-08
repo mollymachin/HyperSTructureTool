@@ -11,6 +11,8 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [spatialData, setSpatialData] = useState<any[]>([]);
   const [containmentMode, setContainmentMode] = useState<'overlap' | 'contained'>('overlap');
+  const [showStateCausality, setShowStateCausality] = useState<boolean>(false);
+  const [showDisclaimer, setShowDisclaimer] = useState<boolean>(false);
   const mapRef = useRef<MapboxMapHandle | null>(null);
   const [spatiotemporalFilters, setSpatiotemporalFilters] = useState<{
     startTime: string | null;
@@ -286,17 +288,49 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
+        <button
+          onClick={() => setShowDisclaimer(v => !v)}
+          aria-label="Show disclaimer about generated content"
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            padding: '8px 12px',
+            background: '#dc3545',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            fontSize: '1.25rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(220,53,69,0.35)'
+          }}
+        >
+          Disclaimer
+        </button>
+        {showDisclaimer && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 56,
+              right: 10,
+              maxWidth: 560,
+              background: '#ffffff',
+              color: '#222',
+              border: '1px solid rgba(220,53,69,0.4)',
+              borderRadius: 8,
+              padding: '12px 14px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+              textAlign: 'left',
+              fontSize: '1.25rem',
+              zIndex: 5
+            }}
+          >
+            Outputs may contain errors, misinformation, or harmful content. Results from HyperSTructureTool should not be treated as definitive truth. The authors accept no responsibility for generated content.          </div>
+        )}
         <h1>HyperSTructure Interaction Tool</h1>
         <p>Create, visualise, interact with and query hyper-Spatio-Temporal-structures!</p>
-        {(spatiotemporalFilters.startTime || spatiotemporalFilters.endTime || 
-          spatiotemporalFilters.locationNames || spatiotemporalFilters.locationCoordinates) ? (
-          <p style={{fontSize: '12px', opacity: 0.7}}>
-            Filters: {spatiotemporalFilters.startTime || 'No start'} to {spatiotemporalFilters.endTime || 'No end'}
-            {spatiotemporalFilters.locationNames ? ` | Names: ${spatiotemporalFilters.locationNames.join(', ')}` : ''}
-            {spatiotemporalFilters.locationCoordinates ? ` | Polygon area` : ''}
-            {spatiotemporalFilters.includeSpatiallyUnconstrained ? ' (including unconstrained)' : ''}
-          </p>
-        ) : null}
+        {/* Removed filter summary text from header */}
       </header>
       
       <main className="App-main">
@@ -310,40 +344,58 @@ function App() {
           />
         </div>
         
-        <div className="visualisation-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h2>HyperSTructure Visualisation</h2>
-            {hyperstructureData && (
-              <button 
-                onClick={clearHyperstructure}
-                className="clear-button"
-              >
-                Clear Data
-              </button>
+        <div className="vis-and-filter-row">
+          <div className="visualisation-section vis-column">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h2 className="subheader">HyperSTructure Visualisation</h2>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button
+                  onClick={() => setShowStateCausality(v => !v)}
+                  style={{ padding: '8px 12px', fontSize: '1.05rem', backgroundColor: showStateCausality ? '#444' : '#6a5acd', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  aria-pressed={showStateCausality}
+                >
+                  {showStateCausality ? 'Hide state nodes' : 'Show state nodes'}
+                </button>
+                {hyperstructureData && (
+                  <button 
+                    onClick={clearHyperstructure}
+                    className="clear-button"
+                    style={{ fontSize: '1.05rem', padding: '8px 12px' }}
+                  >
+                    Clear Data
+                  </button>
+                )}
+              </div>
+            </div>
+            {showStateCausality && (
+              <div style={{ marginBottom: '12px', background: 'rgba(106, 90, 205, 0.12)', border: '1px solid rgba(106, 90, 205, 0.3)', borderRadius: 8, padding: '10px 12px', color: '#2b2b2b', fontSize: '1.1rem' }}>
+                To view causality links: click on a state node, choose the True/False state to query, then press “Show causality” in the popup to display causes and effects for that truth state.
+              </div>
             )}
+            <HyperstructureVisualisation 
+              data={hyperstructureData} 
+              isProcessing={isProcessing} 
+              showStateCausality={showStateCausality}
+            />
           </div>
-          <HyperstructureVisualisation 
-            data={hyperstructureData} 
-            isProcessing={isProcessing} 
-          />
-        </div>
-        
-        <div className="temporal-section">
-          <SpatiotemporalInput 
-            startTime={spatiotemporalFilters.startTime || ''}
-            endTime={spatiotemporalFilters.endTime || ''}
-            locationNames={spatiotemporalFilters.locationNames}
-            locationCoordinates={spatiotemporalFilters.locationCoordinates}
-            includeSpatiallyUnconstrained={spatiotemporalFilters.includeSpatiallyUnconstrained}
-            onSpatiotemporalChange={handleSpatiotemporalChange}
-            onLoadFilteredData={handleLoadFilteredData}
-            isLoading={isProcessing}
-            hasActiveFilters={hasActiveFilters}
-          />
+
+          <div className="temporal-section filter-column">
+            <SpatiotemporalInput 
+              startTime={spatiotemporalFilters.startTime || ''}
+              endTime={spatiotemporalFilters.endTime || ''}
+              locationNames={spatiotemporalFilters.locationNames}
+              locationCoordinates={spatiotemporalFilters.locationCoordinates}
+              includeSpatiallyUnconstrained={spatiotemporalFilters.includeSpatiallyUnconstrained}
+              onSpatiotemporalChange={handleSpatiotemporalChange}
+              onLoadFilteredData={handleLoadFilteredData}
+              isLoading={isProcessing}
+              hasActiveFilters={hasActiveFilters}
+            />
+          </div>
         </div>
         
         <div className="map-section">
-          <h2>Interactive Map</h2>
+          <h2 className="subheader">Interactive Map</h2>
           <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button 
               onClick={loadAllExtractedHyperedges}
@@ -360,14 +412,14 @@ function App() {
             <button
               onClick={() => mapRef.current?.startDrawing()}
               className="clear-button"
-              style={{ backgroundColor: '#6c757d' }}
+              style={{ background: '#3a3a3a', color: '#ffffff', border: '1px solid #2f2f2f' }}
             >
               Draw area
             </button>
             <button
               onClick={() => mapRef.current?.toggleContainmentMode()}
               className="clear-button"
-              style={{ backgroundColor: '#6c757d' }}
+              style={{ background: '#3a3a3a', color: '#ffffff', border: '1px solid #2f2f2f' }}
             >
               Mode: {containmentMode === 'overlap' ? 'Overlap' : 'Contained'}
             </button>
