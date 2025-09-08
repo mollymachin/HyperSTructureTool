@@ -534,6 +534,11 @@ RULES:
 7. Intransitive verbs: If a fact has no objects (e.g., "John dies"), set objects to an empty array [] in affected_fact and in any fact references inside caused_by/causes. Do not omit the objects field.
 8. Return ONLY the completed JSON array, no commentary.
 
+9. Default life-event causality (apply this specific inference even if not explicit in text):
+   - Birth → Alive True: A fact like subjects=[X], objects=[], relation_type="born" (or "is born") causes subjects=[X], objects=[], relation_type="alive" with triggers_state=True. The "alive" fact has caused_by = [[{subjects:[X], objects:[], relation_type:"born" (or case-matched variant), triggered_by_state:True}]].
+   - Death → Alive False: A fact like subjects=[X], objects=[], relation_type="dies" (or variants "died"/"is dead") causes subjects=[X], objects=[], relation_type="alive" with triggers_state=False. The "alive" fact has caused_by = [[{subjects:[X], objects:[], relation_type:"dies" (variant as in input), triggered_by_state:True}]]. Also, subjects=[X], objects=[], relation_type="alive" with state=False causes subjects=[X], objects=[], relation_type="dies" with triggers_state=True.
+   - Always use exact subjects; for these defaults, objects are always []. Use relation_type "alive" for the state reference; for the event, keep the wording present in the input when referencing it.
+
 EXAMPLE INPUT:
 whole_text: "Graduating from university caused Will to work for the Imperial Department of Computing from 2020 until 2025."
 partial_structured_state_facts: [
