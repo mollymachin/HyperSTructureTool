@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './TextInputProcessor.css';
+const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 interface TextInputProcessorProps {
   onDataLoaded: (data: any) => void;
@@ -38,7 +39,7 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
 
   const loadDataFromNeo4j = useCallback(async (loadType: 'all' | 'filtered' = 'all') => {
     try {
-      let url = 'http://localhost:8000/api/hyperstructure/data';
+      let url = `${API_BASE_URL}/api/hyperstructure/data`;
       let params = new URLSearchParams();
 
       if (loadType === 'filtered' && spatiotemporalFilters) {
@@ -126,7 +127,7 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
 
     try {
       // Open SSE stream
-      const url = `http://localhost:8000/api/process-text/stream?text=${encodeURIComponent(textInput.trim())}&chunk_size=3`;
+      const url = `${API_BASE_URL}/api/process-text/stream?text=${encodeURIComponent(textInput.trim())}&chunk_size=3`;
       const es = new EventSource(url);
       eventSourceRef.current = es;
 

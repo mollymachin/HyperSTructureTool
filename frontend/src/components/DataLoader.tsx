@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import './DataLoader.css';
+const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 interface DataLoaderProps {
   onDataLoaded: (data: any) => void;
@@ -26,7 +27,7 @@ const DataLoader: React.FC<DataLoaderProps> = ({ onDataLoaded, onLoadingStart, s
     setLastLoadType(loadType);
 
     try {
-      let url = 'http://localhost:8000/api/hyperstructure/data';
+      let url = `${API_BASE_URL}/api/hyperstructure/data`;
       let params = new URLSearchParams();
 
       if (loadType === 'filtered') {
@@ -64,7 +65,7 @@ const DataLoader: React.FC<DataLoaderProps> = ({ onDataLoaded, onLoadingStart, s
         setError(result.message || `Failed to load ${loadType} data from Neo4j`);
       }
     } catch (err) {
-      setError(`Failed to connect to backend server. Make sure the backend is running on localhost:8000`);
+      setError(`Failed to connect to backend server. Check API base URL setting.`);
     } finally {
       setIsLoading(false);
     }

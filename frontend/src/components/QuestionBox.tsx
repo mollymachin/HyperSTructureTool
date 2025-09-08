@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './QuestionBox.css';
+const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 interface QuestionBoxProps {
   onSubmit?: (question: string) => void;
@@ -37,7 +38,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({ onSubmit }) => {
       // Call backend iterative tool-calling endpoint
       try {
         // Multi-question endpoint to split and answer per sentence
-        const resp = await fetch('http://localhost:8000/api/query/ask_multi', {
+        const resp = await fetch(`${API_BASE_URL}/api/query/ask_multi`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: trimmed, max_loops: 3 })

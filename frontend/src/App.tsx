@@ -6,6 +6,8 @@ import SpatiotemporalInput from './components/TemporalInput';
 import MapboxMap, { type MapboxMapHandle } from './components/MapboxMap';
 import QuestionBox from './components/QuestionBox';
 
+const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+
 function App() {
   const [hyperstructureData, setHyperstructureData] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -86,7 +88,7 @@ function App() {
     }
     
     try {
-      let url = 'http://localhost:8000/api/hyperstructure/data';
+      let url = `${API_BASE_URL}/api/hyperstructure/data`;
       let params = new URLSearchParams();
 
       if (spatiotemporalFilters.startTime || spatiotemporalFilters.endTime || 
@@ -212,7 +214,7 @@ function App() {
 
   const loadAllExtractedHyperedges = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/hyperedge/extract_structured_data', {
+      const response = await fetch(`${API_BASE_URL}/api/hyperedge/extract_structured_data`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -260,7 +262,7 @@ function App() {
     }
 
     try {
-      const response = await fetch('http://localhost:8000/api/hyperstructure/clear', {
+      const response = await fetch(`${API_BASE_URL}/api/hyperstructure/clear`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
