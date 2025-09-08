@@ -18,16 +18,28 @@ from kh_core.neo4j_storage import Neo4jConfig
 
 app = FastAPI(title="Neo4j Hyperstructure Visualisation API", version="1.0.0")
 
-# Enable CORS for frontend (configurable via env FRONTEND_ORIGIN, comma-separated for multiple)
-frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
-allowed_origins = [o.strip() for o in frontend_origin_env.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Enable CORS for frontend
+# Prefer FRONTEND_ORIGIN_REGEX (one regex) to allow dynamic subdomains (e.g., Netlify previews)
+# Fallback to FRONTEND_ORIGIN (comma-separated list)
+origin_regex = (os.getenv("FRONTEND_ORIGIN_REGEX") or "").strip()
+if origin_regex:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=origin_regex,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    frontend_origin_env = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
+    allowed_origins = [o.strip() for o in frontend_origin_env.split(",") if o.strip()]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Initialise text-to-cypher pipeline
 text_to_cypher_pipeline = None
