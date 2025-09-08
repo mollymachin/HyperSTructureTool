@@ -4,6 +4,8 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Any, List
 from pydantic import BaseModel
@@ -780,6 +782,121 @@ async def process_text(request: ProcessTextRequest):
             status="error",
             message=f"Error processing text: {str(e)}"
         )
+
+@app.get("/api/process-text/stream")
+async def process_text_stream(text: str, chunk_size: int = 3):
+    """
+    Server-Sent Events (SSE) endpoint that streams human-readable progress messages
+    while processing text. Messages are throttled on the client; server emits as produced.
+    """
+    async def event_generator():
+        # Helper to format SSE events
+        def sse_event(data: dict) -> str:
+            try:
+                payload = json.dumps(data, ensure_ascii=False)
+            except Exception:
+                payload = json.dumps({"message": str(data)})
+            return f"data: {payload}\n\n"
+
+        # Ensure pipeline is ready
+        global text_to_cypher_pipeline
+        if text_to_cypher_pipeline is None:
+            try:
+                neo4j_config = Neo4jConfig(
+                    uri="bolt://localhost:7687",
+                    username="neo4j",
+                    password="password",
+                    database="neo4j"
+                )
+                text_to_cypher_pipeline = TextToHyperSTructurePipeline(neo4j_config=neo4j_config)
+                ok = await text_to_cypher_pipeline.initialise_neo4j_connection()
+                if not ok:
+                    yield sse_event({"type": "error", "message": "Failed to connect to Neo4j database"})
+                    return
+            except Exception as e:
+                # Will still proceed without DB; pipeline handles no-graph mode
+                pass
+
+        # Import the pipeline and set up a queue for events
+        from utils.process_text import chunking_streaming_pipeline
+        queue: asyncio.Queue = asyncio.Queue()
+
+        # Emit initial messages
+        await queue.put({"type": "info", "message": "Starting text processing pipeline..."})
+        sentences = _split_into_sentences(text)
+        if sentences:
+            await queue.put({"type": "info", "message": f"Detected {len(sentences)} sentences to process"})
+
+        processed = 0
+        done = asyncio.Event()
+
+        async def progress_cb(evt: dict):
+            try:
+                # Ensure minimal shape
+                if not isinstance(evt, dict):
+                    return
+                msg = evt.get("message")
+                if msg:
+                    await queue.put({"type": "stage", **evt})
+            except Exception:
+                pass
+
+        async def run_pipeline():
+            nonlocal processed
+            try:
+                async for fact in chunking_streaming_pipeline(text.strip(), chunk_size, progress_cb=progress_cb):
+                    processed += 1
+                    subj = fact.get("subjects") or []
+                    obj = fact.get("objects") or []
+                    rel = fact.get("relation_type") or ""
+                    if subj or obj or rel:
+                        subj_txt = ", ".join(subj) if subj else "(unknown)"
+                        obj_txt = ", ".join(obj) if obj else "(none)"
+                        preview = f"{subj_txt} {rel} {obj_txt}".strip()
+                    else:
+                        preview = "structured fact"
+                    await queue.put({
+                        "type": "stage",
+                        "message": f"Extracted spatio-temporal fact #{processed}: {preview}",
+                        "count": processed
+                    })
+                await queue.put({
+                    "type": "complete",
+                    "message": f"Processing complete. Added {processed} facts to the graph.",
+                    "count": processed
+                })
+            except Exception as e:
+                await queue.put({"type": "error", "message": f"Pipeline processing failed: {str(e)}"})
+            finally:
+                done.set()
+
+        # Start the pipeline in the background
+        task = asyncio.create_task(run_pipeline())
+
+        # Drain the queue and stream out as SSE
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=0.25)
+                except asyncio.TimeoutError:
+                    if done.is_set() and queue.empty():
+                        break
+                    continue
+                yield sse_event(item)
+        finally:
+            task.cancel()
+            try:
+                await task
+            except Exception:
+                pass
+
+    headers = {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Content-Type": "text/event-stream",
+        "X-Accel-Buffering": "no",
+    }
+    return StreamingResponse(event_generator(), headers=headers, media_type="text/event-stream")
 
 @app.post("/api/hyperstructure/clear")
 async def clear_hyperstructure():

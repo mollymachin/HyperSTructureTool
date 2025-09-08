@@ -1049,7 +1049,9 @@ Output:
 
 
 
-async def chunking_streaming_pipeline(text: str, chunk_size: int = 3):
+from typing import Optional, Callable, Awaitable, Dict, Any
+
+async def chunking_streaming_pipeline(text: str, chunk_size: int = 3, progress_cb: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None):
     """
     Full pipeline for processing text into structured data ready to send to cypher generation and execution.
     
@@ -1121,6 +1123,17 @@ async def chunking_streaming_pipeline(text: str, chunk_size: int = 3):
     async def process_sentence_end_to_end(chunk_index, sentence_index, sentence):
         temporal_expansion_start = time.time()
         print(f"  Expanding sentence {sentence_index + 1} from chunk {chunk_index}: {sentence}")
+        if progress_cb:
+            try:
+                await progress_cb({
+                    "type": "stage",
+                    "stage": "temporal_start",
+                    "chunk": chunk_index,
+                    "sentence": sentence_index + 1,
+                    "message": f"Expanding temporal facts for sentence {sentence_index + 1}: {sentence}"
+                })
+            except Exception:
+                pass
         
         # Use the new per-sentence function with full context
         expanded_sentence = await expand_temporal_facts_for_sentence(sentence, regular_text, openai_interface)
@@ -1135,6 +1148,17 @@ async def chunking_streaming_pipeline(text: str, chunk_size: int = 3):
         temporal_expansion_end = time.time()
         temporal_expansion_duration = temporal_expansion_end - temporal_expansion_start
         print(f"  ✓ Sentence {sentence_index + 1} from chunk {chunk_index} temporal expansion complete in {temporal_expansion_duration:.2f} seconds (total time: {temporal_expansion_end - pipeline_start_time:.2f}s)")
+        if progress_cb:
+            try:
+                await progress_cb({
+                    "type": "stage",
+                    "stage": "temporal_done",
+                    "chunk": chunk_index,
+                    "sentence": sentence_index + 1,
+                    "message": f"Finished expanding the spatio-temporal facts for sentence {sentence_index + 1}!"
+                })
+            except Exception:
+                pass
         
         # Immediately process this expanded sentence with structure extraction
         try:
@@ -1143,9 +1167,44 @@ async def chunking_streaming_pipeline(text: str, chunk_size: int = 3):
             structure_extraction_end = time.time()
             structure_extraction_duration = structure_extraction_end - structure_extraction_start
             print(f"  ✓ Sentence {sentence_index + 1} from chunk {chunk_index} structure extraction complete in {structure_extraction_duration:.2f} seconds (total time: {structure_extraction_end - pipeline_start_time:.2f}s)")
+            if progress_cb:
+                try:
+                    await progress_cb({
+                        "type": "stage",
+                        "stage": "structure_done",
+                        "chunk": chunk_index,
+                        "sentence": sentence_index + 1,
+                        "message": f"Finished extracting the structured JSON for sentence {sentence_index + 1}!"
+                    })
+                except Exception:
+                    pass
             
             # Process each structured data item from this sentence
             results = []
+            # Helper to sanitise a single structured fact to avoid placeholder junk entering the graph
+            def sanitise_fact(fact: Dict[str, Any]) -> Dict[str, Any] | None:
+                try:
+                    if not isinstance(fact, dict):
+                        return None
+                    # Clean relation_type
+                    rel = str(fact.get('relation_type', '') or '').strip()
+                    if not rel or rel.lower() in {'unknown', '?'}:
+                        return None
+                    fact['relation_type'] = rel
+                    # Clean subjects
+                    subs = [str(s).strip() for s in (fact.get('subjects') or []) if s is not None]
+                    subs = [s for s in subs if s and s != '?' and s.lower() != 'unknown']
+                    if not subs:
+                        return None
+                    fact['subjects'] = subs
+                    # Clean objects (objects may be empty by design for intransitive verbs)
+                    objs = [str(o).strip() for o in (fact.get('objects') or []) if o is not None]
+                    objs = [o for o in objs if o and o != '?' and o.lower() != 'unknown']
+                    fact['objects'] = objs
+                    return fact
+                except Exception:
+                    return None
+
             for i, structured_data in enumerate(structured_data_list):
                 if structured_data:
                     # Add fact_type if not present
@@ -1158,16 +1217,32 @@ async def chunking_streaming_pipeline(text: str, chunk_size: int = 3):
                     spatial_expansion_end = time.time()
                     spatial_expansion_duration = spatial_expansion_end - spatial_expansion_start
                     print(f"  ✓ Sentence {sentence_index + 1} from chunk {chunk_index} fact {i+1} spatial expansion complete in {spatial_expansion_duration:.2f} seconds (total time: {spatial_expansion_end - pipeline_start_time:.2f}s)")
+                    # Clean up the fact to avoid placeholder entities/relations, avoiding 'unknown' in the visualisation
+                    sanitised = sanitise_fact(structured_data_with_spatial)
+                    if sanitised is None:
+                        print(f"Skipping invalid/placeholder fact for sentence {sentence_index + 1} (e.g. unknown relation or '?' entity)")
+                        continue
+                    if progress_cb:
+                        try:
+                            await progress_cb({
+                                "type": "stage",
+                                "stage": "spatial_done",
+                                "chunk": chunk_index,
+                                "sentence": sentence_index + 1,
+                                "message": f"Finished spatial context and coordinates extraction for sentence {sentence_index + 1} fact {i+1}"
+                            })
+                        except Exception:
+                            pass
                     
                     # Store for state fact extraction
-                    all_structured_data.append(structured_data_with_spatial)
+                    all_structured_data.append(sanitised)
                     
                     # Immediately send to graph using cypher generation and execution
                     if text_to_cypher_pipeline:
                         try:
                             # Generate cypher query for this structured data
                             cypher_generation_start = time.time()
-                            async for item in cypher_generator.generate_cypher_from_structured_output([structured_data_with_spatial], text_to_cypher_pipeline.neo4j_storage):
+                            async for item in cypher_generator.generate_cypher_from_structured_output([sanitised], text_to_cypher_pipeline.neo4j_storage):
                                 # Support both legacy string and (query, params) tuple
                                 if isinstance(item, tuple) and len(item) == 2:
                                     query, params = item
@@ -1200,27 +1275,38 @@ async def chunking_streaming_pipeline(text: str, chunk_size: int = 3):
                                     
                                     if success:
                                         # Track successful temporal fact insertion
-                                        successful_temporal_facts.append(structured_data_with_spatial)
+                                        successful_temporal_facts.append(sanitised)
                                         print(f"  ✓ Sentence {sentence_index + 1} from chunk {chunk_index} fact {i+1} successfully added to graph")
                                         print(f"    Cypher generation: {cypher_generation_duration:.2f}s, Execution: {cypher_execution_duration:.2f}s (total time: {cypher_execution_end - pipeline_start_time:.2f}s)")
+                                        if progress_cb:
+                                            try:
+                                                await progress_cb({
+                                                    "type": "stage",
+                                                    "stage": "graph_done",
+                                                    "chunk": chunk_index,
+                                                    "sentence": sentence_index + 1,
+                                                    "message": f"Fact from sentence {sentence_index + 1} successfully added to graph"
+                                                })
+                                            except Exception:
+                                                pass
                                     else:
                                         # Track failed temporal fact insertion
-                                        failed_temporal_facts.append(structured_data_with_spatial)
+                                        failed_temporal_facts.append(sanitised)
                                         print(f"  ✗ Sentence {sentence_index + 1} from chunk {chunk_index} fact {i+1} failed to execute cypher query")
                                         print(f"    Cypher generation: {cypher_generation_duration:.2f}s, Execution failed (total time: {cypher_execution_end - pipeline_start_time:.2f}s)")
                                 else:
                                     print(f"  Warning: Empty cypher query generated for sentence {sentence_index + 1} from chunk {chunk_index}")
                         except Exception as e:
                             # Track failed temporal fact insertion due to exception
-                            failed_temporal_facts.append(structured_data_with_spatial)
+                            failed_temporal_facts.append(sanitised)
                             print(f"  ✗ Failed to process graph operations for sentence {sentence_index + 1} from chunk {chunk_index}: {e}")
                     else:
                         # If no graph connection, treat as successful for tracking purposes
-                        successful_temporal_facts.append(structured_data_with_spatial)
+                        successful_temporal_facts.append(sanitised)
                         print(f"  ✓ Sentence {sentence_index + 1} from chunk {chunk_index} fact {i+1} processed (no graph connection)")
                     
                     # Add the structured data to results
-                    results.append(structured_data_with_spatial)
+                    results.append(sanitised)
                     
         except Exception as e:
             print(f"  Error in structure extraction for sentence {sentence_index + 1} from chunk {chunk_index}: {e}")

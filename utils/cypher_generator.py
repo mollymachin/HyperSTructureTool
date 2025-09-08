@@ -236,7 +236,18 @@ class CypherGenerator:
                         # Extract data from structured data
                         subjects = hyperedge_data.get('subjects', [])
                         objects = hyperedge_data.get('objects', [])
-                        relation_type = hyperedge_data.get("relation_type", "unknown")
+                        relation_type = str(hyperedge_data.get("relation_type", "") or "").strip()
+                        # Validate and sanitise to avoid placeholders being shown on the graph
+                        if not relation_type or relation_type.lower() == 'unknown' or relation_type == '?':
+                            # Skip invalid relation
+                            continue
+                        # Clean subjects/objects, objects may be empty for intransitive verbs
+                        subjects = [str(s).strip() for s in (subjects or []) if s is not None]
+                        subjects = [s for s in subjects if s and s != '?' and s.lower() != 'unknown']
+                        if not subjects:
+                            continue
+                        objects = [str(o).strip() for o in (objects or []) if o is not None]
+                        objects = [o for o in objects if o and o != '?' and o.lower() != 'unknown']
                         temporal_intervals = hyperedge_data.get('temporal_intervals', []) # List of ISO 8601 strings
                         spatial_contexts = hyperedge_data.get('spatial_contexts', [])
                     

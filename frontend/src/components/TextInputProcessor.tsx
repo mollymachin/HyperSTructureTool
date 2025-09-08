@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './TextInputProcessor.css';
 
 interface TextInputProcessorProps {
@@ -26,7 +26,12 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [realTimeUpdates, setRealTimeUpdates] = useState(true); // Default: ON
-  const [progressMessage, setProgressMessage] = useState<string>('');
+  const [progressVisible, setProgressVisible] = useState<boolean>(false);
+  const [currentProgress, setCurrentProgress] = useState<string>('');
+  const [progressQueue, setProgressQueue] = useState<string[]>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const drainingRef = useRef<boolean>(false);
+  const drainTimerRef = useRef<number | null>(null);
 
   // Check if submit button should be enabled
   const canSubmit = textInput.trim().length > 0 && !isProcessing;
@@ -76,52 +81,111 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
 
     setIsProcessing(true);
     setError(null);
-    setProgressMessage('Starting text processing pipeline...');
+    setProgressVisible(true);
+    setCurrentProgress('Starting text processing pipeline...');
+    setProgressQueue([]);
     onLoadingStart();
 
-    try {
-      // Send text to backend for processing
-      const response = await fetch('http://localhost:8000/api/process-text', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: textInput.trim(),
-          chunk_size: 3
-        }),
+    // Helper to enqueue and start draining if idle
+    const enqueue = (msg: string) => {
+      setProgressQueue(prev => {
+        const next = [...prev, msg];
+        // Start draining if not already
+        if (!drainingRef.current) {
+          drainingRef.current = true;
+          const drainOnce = () => {
+            setProgressQueue(curr => {
+              if (curr.length === 0) {
+                drainingRef.current = false;
+                if (drainTimerRef.current) {
+                  window.clearTimeout(drainTimerRef.current);
+                  drainTimerRef.current = null;
+                }
+                return curr;
+              }
+              const [head, ...rest] = curr;
+              setCurrentProgress(head);
+              // Schedule next pop after 1s
+              if (drainTimerRef.current) {
+                window.clearTimeout(drainTimerRef.current);
+              }
+              drainTimerRef.current = window.setTimeout(drainOnce, 1000);
+              return rest;
+            });
+          };
+          // If no current message, kick off immediately, otherwise wait 1s
+          if (!currentProgress) {
+            drainOnce();
+          } else {
+            drainTimerRef.current = window.setTimeout(drainOnce, 1000);
+          }
+        }
+        return next;
       });
+    };
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+    try {
+      // Open SSE stream
+      const url = `http://localhost:8000/api/process-text/stream?text=${encodeURIComponent(textInput.trim())}&chunk_size=3`;
+      const es = new EventSource(url);
+      eventSourceRef.current = es;
 
-      const result = await response.json();
-      
-      if (result.status === 'success') {
-        setProgressMessage(`Text processing completed successfully! Added ${result.facts_processed} facts to the graph.`);
-        // Don't immediately load data here - let the auto-refresh handle it
-        // This prevents duplicate data loading calls
-      } else {
-        throw new Error(result.message || 'Text processing failed');
-      }
+      es.onmessage = (ev: MessageEvent) => {
+        try {
+          const data = JSON.parse(ev.data || '{}');
+          const type = String(data.type || 'info');
+          const msg = String(data.message || '');
+          if (type === 'error') {
+            setError(msg || 'An error occurred during processing');
+          }
+          if (type === 'complete') {
+            if (msg) enqueue(msg);
+            es.close();
+            eventSourceRef.current = null;
+            setIsProcessing(false);
+            onLoadingComplete();
+            // Load final data after a short delay to ensure completion
+            setTimeout(() => {
+              loadDataFromNeo4j();
+              // Hide popup a moment later if no more messages
+              setTimeout(() => {
+                setProgressVisible(false);
+                setCurrentProgress('');
+                setProgressQueue([]);
+              }, 800);
+            }, 1200);
+            return;
+          }
+          if (msg) {
+            setProgressVisible(true);
+            enqueue(msg);
+          }
+        } catch (e) {
+          // Non-JSON or unexpected message
+          const fallback = (ev.data || '').toString();
+          if (fallback) {
+            setProgressVisible(true);
+            enqueue(fallback);
+          }
+        }
+      };
+
+      es.onerror = (e: any) => {
+        console.error('SSE error:', e);
+        setError('Connection lost while streaming progress.');
+        try { es.close(); } catch {}
+        eventSourceRef.current = null;
+        setIsProcessing(false);
+        onLoadingComplete();
+      };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(`Failed to process text: ${errorMessage}`);
-      console.error('Text processing error:', err);
-    } finally {
-      // Set processing to false immediately to stop auto-refresh
+      setError(`Failed to start streaming: ${errorMessage}`);
+      console.error('Text processing stream error:', err);
       setIsProcessing(false);
       onLoadingComplete();
-      setProgressMessage('');
-      
-      // Load the final data once to ensure the visualisation is up to date
-      // Use a longer delay to ensure backend has finished processing and auto-refresh has stopped
-      setTimeout(() => {
-        loadDataFromNeo4j();
-      }, 1500); // 1.5 second delay to ensure processing is complete
     }
-  }, [textInput, isProcessing, onLoadingStart, onLoadingComplete, loadDataFromNeo4j]);
+  }, [textInput, isProcessing, onLoadingStart, onLoadingComplete, loadDataFromNeo4j, currentProgress]);
 
   // Expose the loadFilteredData function through the ref callback
   const loadFilteredData = useCallback(() => {
@@ -140,6 +204,20 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
     loadDataFromNeo4j();
   }, [loadDataFromNeo4j]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        try { eventSourceRef.current.close(); } catch {}
+        eventSourceRef.current = null;
+      }
+      if (drainTimerRef.current) {
+        window.clearTimeout(drainTimerRef.current);
+        drainTimerRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <div className="text-input-processor-container">
       <h2>Process New Text</h2>
@@ -148,17 +226,6 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
       {error && (
         <div className="error-message">
           {error}
-        </div>
-      )}
-      
-      {progressMessage && (
-        <div className="progress-message">
-          {progressMessage}
-          {realTimeUpdates && isProcessing && (
-            <div className="real-time-indicator">
-              🔄 Auto-refreshing graph every second...
-            </div>
-          )}
         </div>
       )}
       
@@ -197,6 +264,15 @@ const TextInputProcessor: React.FC<TextInputProcessorProps> = ({
         >
           {isProcessing ? 'Processing...' : 'Process Text'}
         </button>
+
+        {progressVisible && (currentProgress || progressQueue.length > 0) && (
+          <div className="progress-popup">
+            <div className="progress-item">{currentProgress}</div>
+            {realTimeUpdates && isProcessing && (
+              <div className="real-time-indicator">Real-time updates enabled: Refreshing the graph every second</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
